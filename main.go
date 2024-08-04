@@ -2,21 +2,18 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"go-beyond/server"
 	"go-beyond/services"
-	"time"
+	"net/http"
 )
 
 func main() {
-	services.InitializeRedisClient()
-
-	redisClient := services.GetRedisClient()
-
 	ctx := context.Background()
+	services.InitializeRedisClient(ctx)
+	server.InitializeServer(ctx)
 
-	start := time.Now()
-	cart := redisClient.HGetAll(ctx, "initCart").Val()
-	ellapsed := time.Since(start)
+	s := server.GetServer()
 
-	fmt.Println(cart["1"], ellapsed)
+	http.ListenAndServe(":8080", &s.Mux)
+
 }

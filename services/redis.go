@@ -11,7 +11,7 @@ var (
 	redisClient *redis.Client
 )
 
-func InitializeRedisClient() {
+func InitializeRedisClient(ctx context.Context) {
 	redisClient = redis.NewClient(&redis.Options{
 		Addr:     "redis-18248.c290.ap-northeast-1-2.ec2.redns.redis-cloud.com:18248",
 		Password: "RjQUkQZaUa3X618S0lnNGszX09o6SYeF",
@@ -19,7 +19,6 @@ func InitializeRedisClient() {
 	})
 
 	// Ping the Redis server to check the connection
-	ctx := context.Background()
 	_, err := redisClient.Ping(ctx).Result()
 	if err != nil {
 		log.Fatalf("Could not connect to Redis: %v", err)
