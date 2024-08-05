@@ -2,7 +2,8 @@ package main
 
 import (
 	"context"
-	"go-beyond/server"
+	handlers "go-beyond/handlers/api"
+	websocket_server "go-beyond/server"
 	"go-beyond/services"
 	"net/http"
 )
@@ -10,10 +11,22 @@ import (
 func main() {
 	ctx := context.Background()
 	services.InitializeRedisClient(ctx)
-	server.InitializeServer(ctx)
+	websocket_server.InitializeWebSocketServer(ctx)
 
-	s := server.GetServer()
+	router := http.NewServeMux()
+	addRoutes(router)
 
-	http.ListenAndServe(":8080", &s.Mux)
+	http.ListenAndServe(":8080", router)
+
+}
+
+func addRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("/ws/{name}", websocket_server.ClientHandler)
+
+	mux.HandleFunc("POST /api/v1/cart/{name}", handlers.HandleUpdateCartItem)
+
+	mux.HandleFunc("GET /api/v1/cart/{name}", handlers.HandleGetCartItems)
+
+	mux.HandleFunc("DELETE /api/v1/cart/{name}", handlers.HandleDeleteCartItem)
 
 }

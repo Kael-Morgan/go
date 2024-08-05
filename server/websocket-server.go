@@ -17,21 +17,20 @@ type Server struct {
 }
 
 type Client struct {
-	cartname string
+	CartName string
 }
 
 var server *Server
 
-func InitializeServer(ctx context.Context) {
+func InitializeWebSocketServer(ctx context.Context) {
 	server = &Server{
 		clients: make(map[*websocket.Conn]*Client),
 		Mux:     *http.NewServeMux(),
 	}
-	server.addRoutes()
 }
 
-func (s *Server) ClientHandler(w http.ResponseWriter, r *http.Request) {
-	err := s.handle(w, r)
+func ClientHandler(w http.ResponseWriter, r *http.Request) {
+	err := server.handle(w, r)
 	if err != nil {
 		fmt.Println("Handle error: ", err)
 	}
@@ -41,7 +40,6 @@ func (s *Server) addClient(connection *websocket.Conn, client *Client) {
 	s.mutex.Lock()
 	s.clients[connection] = client
 	s.mutex.Unlock()
-	fmt.Println("Added Client ", connection)
 }
 
 func (s *Server) handle(w http.ResponseWriter, r *http.Request) error {
@@ -51,7 +49,7 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 	client := &Client{
-		cartname: r.PathValue("name"),
+		CartName: r.PathValue("name"),
 	}
 
 	opts := &websocket.AcceptOptions{
@@ -80,4 +78,8 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) error {
 }
 func GetServer() *Server {
 	return server
+}
+
+func GetClients() map[*websocket.Conn]*Client {
+	return server.clients
 }

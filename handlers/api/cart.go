@@ -1,15 +1,22 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"go-beyond/server"
 	"go-beyond/services"
 	"net/http"
+
+	"nhooyr.io/websocket"
 )
 
 func HandleUpdateCartItem(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
 	cartName := r.PathValue("name")
 	itemId := r.URL.Query().Get("id")
+
 	if itemId == "" {
 		fmt.Println("Empty param", cartName)
 	}
@@ -28,22 +35,42 @@ func HandleUpdateCartItem(w http.ResponseWriter, r *http.Request) {
 		services.GetRedisClient().HSet(r.Context(), cartName, key, redisHSETValue)
 	}
 
+	jsoned, err := json.Marshal(item)
+	if err != nil {
+		return
+	}
+
+	for ws, client := range server.GetClients() {
+		if client.CartName == cartName {
+
+			go func() {
+
+				ws.Write(ctx, websocket.MessageBinary, jsoned)
+			}()
+		}
+
+	}
+
 	fmt.Println(cartName, item)
 	w.Write([]byte("received"))
 
 }
 
 func HandleDeleteCartItem(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
 	cartName := r.URL.Query().Get("name")
+	if cartName == "" {
+		return
+	}
 	itemId := r.URL.Query().Get("id")
 	if itemId == "" {
 		w.Write([]byte("Error: no id in Parameters"))
 	}
 
-	services.GetRedisClient().HDel(r.Context(), cartName, itemId)
+	services.GetRedisClient().HDel(ctx, cartName, itemId)
 
 	w.Write([]byte("Deleted " + itemId))
-
 }
 
 func HandleGetCartItems(w http.ResponseWriter, r *http.Request) {
