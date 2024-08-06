@@ -12,28 +12,28 @@ import (
 )
 
 func HandleUpdateCartItem(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithCancel(r.Context())
-	defer cancel()
+	ctx, _ := context.WithCancel(r.Context())
+	// defer cancel()
 	cartName := r.PathValue("name")
 	itemId := r.URL.Query().Get("id")
 
 	if itemId == "" {
 		fmt.Println("Empty param", cartName)
 	}
-	var item CartItem
+	var item ItemInfo
 	err := json.NewDecoder(r.Body).Decode(&item)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	for key, value := range item {
-		redisHSETValue, err := json.Marshal(value)
-		if err != nil {
-			fmt.Println(err)
-		}
-		services.GetRedisClient().HSet(r.Context(), cartName, key, redisHSETValue)
+	redisHSETValue, err := json.Marshal(item)
+
+	// fmt.Println(item, redisHSETValue)
+	if err != nil {
+		fmt.Println(err)
 	}
+	services.GetRedisClient().HSet(r.Context(), cartName, itemId, redisHSETValue)
 
 	jsoned, err := json.Marshal(item)
 	if err != nil {
@@ -42,17 +42,18 @@ func HandleUpdateCartItem(w http.ResponseWriter, r *http.Request) {
 
 	for ws, client := range server.GetClients() {
 		if client.CartName == cartName {
-
 			go func() {
-
 				ws.Write(ctx, websocket.MessageBinary, jsoned)
 			}()
 		}
 
 	}
 
-	fmt.Println(cartName, item)
-	w.Write([]byte("received"))
+	fmt.Println(cartName)
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsoned)
 
 }
 
@@ -64,18 +65,26 @@ func HandleDeleteCartItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	itemId := r.URL.Query().Get("id")
+
+	fmt.Println(itemId)
 	if itemId == "" {
 		w.Write([]byte("Error: no id in Parameters"))
 	}
 
 	services.GetRedisClient().HDel(ctx, cartName, itemId)
 
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.WriteHeader(http.StatusOK)
+
 	w.Write([]byte("Deleted " + itemId))
 }
 
 func HandleGetCartItems(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
 	cartName := r.PathValue("name")
-	data := services.GetRedisClient().HGetAll(r.Context(), cartName)
+	data := services.GetRedisClient().HGetAll(ctx, cartName)
 
 	res := CartItem{}
 
@@ -85,12 +94,13 @@ func HandleGetCartItems(w http.ResponseWriter, r *http.Request) {
 		res[key] = unjsoned
 	}
 
-	items, err := json.Marshal(res)
+	jsoned, err := json.Marshal(res)
+
 	if err != nil {
-		w.Write([]byte("read error" + err.Error()))
+		fmt.Println(err)
 	}
 
-	w.Write(items)
+	w.Write(jsoned)
 }
 
 type CartItem map[string]ItemInfo

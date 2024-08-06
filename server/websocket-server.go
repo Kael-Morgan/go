@@ -7,13 +7,11 @@ import (
 	"sync"
 
 	"nhooyr.io/websocket"
-	"nhooyr.io/websocket/wsjson"
 )
 
 type Server struct {
 	clients map[*websocket.Conn]*Client
 	mutex   sync.Mutex
-	Mux     http.ServeMux
 }
 
 type Client struct {
@@ -25,7 +23,6 @@ var server *Server
 func InitializeWebSocketServer(ctx context.Context) {
 	server = &Server{
 		clients: make(map[*websocket.Conn]*Client),
-		Mux:     *http.NewServeMux(),
 	}
 }
 
@@ -66,8 +63,8 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) error {
 	defer conn.Close(websocket.StatusInternalError, "Internal error")
 
 	for {
-		var message string
-		err = wsjson.Read(ctx, conn, &message)
+		_, message, err := conn.Read(ctx)
+		fmt.Println(string(message))
 		if err != nil {
 			return err
 		}
