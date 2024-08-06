@@ -7,19 +7,26 @@ import (
 	"go-beyond/server"
 	"go-beyond/services"
 	"net/http"
+	"strconv"
+	"time"
 
 	"nhooyr.io/websocket"
 )
+
+type CartItem map[string]ItemInfo
+
+type ItemInfo struct {
+	Name      string `json:"name"`
+	IsChecked bool   `json:"isChecked"`
+}
+
+type Command map[string]CartItem
 
 func HandleUpdateCartItem(w http.ResponseWriter, r *http.Request) {
 	ctx, _ := context.WithCancel(r.Context())
 	// defer cancel()
 	cartName := r.PathValue("name")
-	itemId := r.URL.Query().Get("id")
 
-	if itemId == "" {
-		fmt.Println("Empty param", cartName)
-	}
 	var item ItemInfo
 	err := json.NewDecoder(r.Body).Decode(&item)
 	if err != nil {
@@ -32,52 +39,77 @@ func HandleUpdateCartItem(w http.ResponseWriter, r *http.Request) {
 	// fmt.Println(item, redisHSETValue)
 	if err != nil {
 		fmt.Println(err)
-	}
-	services.GetRedisClient().HSet(r.Context(), cartName, itemId, redisHSETValue)
-
-	jsoned, err := json.Marshal(item)
-	if err != nil {
 		return
 	}
 
-	for ws, client := range server.GetClients() {
-		if client.CartName == cartName {
-			go func() {
-				ws.Write(ctx, websocket.MessageBinary, jsoned)
-			}()
-		}
+	itemId := getItemId()
 
+	// for services.GetRedisClient().HGet(ctx, cartName, itemId) != nil {
+	// 	itemId = getItemId()
+	// }
+
+	services.GetRedisClient().HSet(r.Context(), cartName, itemId, redisHSETValue)
+
+	jsonItem, err := json.Marshal(item)
+	if err != nil {
+		fmt.Println(err)
+		return
 	}
 
-	fmt.Println(cartName)
+	command := Command{"add": {itemId: item}}
+
+	jsonRes, err := json.Marshal(command)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	sendCommand(ctx, cartName, jsonRes)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(http.StatusOK)
-	w.Write(jsoned)
+	w.Write(jsonItem)
 
 }
 
 func HandleDeleteCartItem(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
-	cartName := r.URL.Query().Get("name")
+	cartName := r.PathValue("name")
 	if cartName == "" {
 		return
 	}
 	itemId := r.URL.Query().Get("id")
 
-	fmt.Println(itemId)
 	if itemId == "" {
 		w.Write([]byte("Error: no id in Parameters"))
 	}
 
 	services.GetRedisClient().HDel(ctx, cartName, itemId)
 
+	res, err := json.Marshal("Deleted" + itemId)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	command := Command{"remove": {itemId: {}}}
+
+	jsonCommand, err := json.Marshal(command)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	sendCommand(ctx, cartName, jsonCommand)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(http.StatusOK)
-
-	w.Write([]byte("Deleted " + itemId))
+	w.Write(res)
 }
 
 func HandleGetCartItems(w http.ResponseWriter, r *http.Request) {
@@ -103,11 +135,19 @@ func HandleGetCartItems(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsoned)
 }
 
-type CartItem map[string]ItemInfo
+func sendCommand(ctx context.Context, cartName string, content []byte) {
+	for ws, client := range server.GetClients() {
+		if client.CartName == cartName {
+			if err := ws.Write(ctx, websocket.MessageText, content); err != nil {
+				fmt.Println(err)
+			}
+		}
+	}
+}
 
-type ItemInfo struct {
-	Name      string `json:"name"`
-	IsChecked bool   `json:"isChecked"`
+func getItemId() string {
+	now := time.Now().UnixNano() / int64(time.Millisecond)
+	return strconv.FormatInt(now, 36)
 }
 
 // redisClient := services.GetRedisClient()

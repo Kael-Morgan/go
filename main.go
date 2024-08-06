@@ -7,6 +7,8 @@ import (
 	websocket_server "go-beyond/server"
 	"go-beyond/services"
 	"net/http"
+
+	"github.com/rs/cors"
 )
 
 func main() {
@@ -15,38 +17,45 @@ func main() {
 	websocket_server.InitializeWebSocketServer(ctx)
 
 	router := http.NewServeMux()
+
 	addRoutes(router)
 
-	err := http.ListenAndServe(":443", router)
+	corsHandler := cors.AllowAll().Handler(router)
+
+	err := http.ListenAndServe(":443", corsHandler)
 	fmt.Println(err)
 }
 
 func addRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/ws/{name}", addCORS(websocket_server.ClientHandler))
+	mux.HandleFunc("/ws/{name}", websocket_server.ClientHandler)
 
-	mux.HandleFunc("POST /api/v1/cart/{name}", addCORS(handlers.HandleUpdateCartItem))
+	mux.HandleFunc("POST /api/v1/cart/{name}", handlers.HandleUpdateCartItem)
 
-	mux.HandleFunc("GET /api/v1/cart/{name}", addCORS(handlers.HandleGetCartItems))
+	mux.HandleFunc("GET /api/v1/cart/{name}", handlers.HandleGetCartItems)
 
-	mux.HandleFunc("DELETE /api/v1/cart/{name}", addCORS(handlers.HandleDeleteCartItem))
+	mux.HandleFunc("DELETE /api/v1/cart/{name}", handlers.HandleDeleteCartItem)
+
+	// mux.HandleFunc("/ws/{name}", addCORS(websocket_server.ClientHandler))
+
+	// mux.HandleFunc("POST /api/v1/cart/{name}", addCORS(handlers.HandleUpdateCartItem))
+
+	// mux.HandleFunc("GET /api/v1/cart/{name}", addCORS(handlers.HandleGetCartItems))
+
+	// mux.HandleFunc("DELETE /api/v1/cart/{name}", addCORS(handlers.HandleDeleteCartItem))
 
 }
 
-func addCORS(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println(w.Header())
+// func addCORS(next http.HandlerFunc) http.HandlerFunc {
+// 	return func(w http.ResponseWriter, r *http.Request) {
+// 		w.Header().Set("Access-Control-Allow-Origin", "*")
+// 		w.Header().Set("Access-Control-Allow-Headers", "*")
+// 		w.Header().Set("Access-Control-Allow-Credentials", "false")
+// 		w.Header().Set("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE")
 
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type,X-CSRF-Header,Authorization,Content-Type")
-		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE")
-
-		fmt.Println(w.Header(), r)
-
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		next(w, r)
-	}
-}
+// 		if r.Method == "OPTIONS" {
+// 			w.WriteHeader(http.StatusOK)
+// 			return
+// 		}
+// 		next.ServeHTTP(w, r)
+// 	}
+// }

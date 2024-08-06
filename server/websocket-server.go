@@ -11,7 +11,7 @@ import (
 
 type Server struct {
 	clients map[*websocket.Conn]*Client
-	mutex   sync.Mutex
+	Mutex   sync.Mutex
 }
 
 type Client struct {
@@ -34,9 +34,11 @@ func ClientHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) addClient(connection *websocket.Conn, client *Client) {
-	s.mutex.Lock()
+	s.Mutex.Lock()
 	s.clients[connection] = client
-	s.mutex.Unlock()
+	s.Mutex.Unlock()
+
+	fmt.Println(len(s.clients))
 }
 
 func (s *Server) handle(w http.ResponseWriter, r *http.Request) error {
@@ -61,6 +63,7 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	defer conn.Close(websocket.StatusInternalError, "Internal error")
+	defer func() { delete(s.clients, conn) }()
 
 	for {
 		_, message, err := conn.Read(ctx)
