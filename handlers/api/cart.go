@@ -22,9 +22,26 @@ type ItemInfo struct {
 
 type Command map[string]CartItem
 
+// func HandleUpdateCartItem(w http.ResponseWriter, r *http.Request) {
+// 	ctx, cancel := context.WithCancel(r.Context())
+// 	defer cancel()
+
+// 	cartName := r.PathValue("name")
+
+// 	if cartName == "" {
+// 		return
+// 	}
+// 	itemId := r.URL.Query().Get("id")
+
+// 	if itemId == "" {
+// 		return
+// 	}
+
+// }
+
 func HandleUpdateCartItem(w http.ResponseWriter, r *http.Request) {
-	ctx, _ := context.WithCancel(r.Context())
-	// defer cancel()
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
 	cartName := r.PathValue("name")
 
 	var item ItemInfo
@@ -34,15 +51,19 @@ func HandleUpdateCartItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	redisHSETValue, err := json.Marshal(item)
+	operation := "modify"
 
-	// fmt.Println(item, redisHSETValue)
+	itemId := r.URL.Query().Get("id")
+	if itemId == "" {
+		operation = "add"
+		itemId = getItemId()
+	}
+
+	redisHSETValue, err := json.Marshal(item)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-
-	itemId := getItemId()
 
 	// for services.GetRedisClient().HGet(ctx, cartName, itemId) != nil {
 	// 	itemId = getItemId()
@@ -56,7 +77,7 @@ func HandleUpdateCartItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	command := Command{"add": {itemId: item}}
+	command := Command{operation: {itemId: item}}
 
 	jsonRes, err := json.Marshal(command)
 
