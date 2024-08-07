@@ -8,10 +8,14 @@ import (
 	"go-beyond/services"
 	"net/http"
 
+	"github.com/joho/godotenv"
 	"github.com/rs/cors"
 )
 
 func main() {
+
+	err := godotenv.Load(".env")
+
 	ctx := context.Background()
 	services.InitializeRedisClient(ctx)
 	websocket_server.InitializeWebSocketServer(ctx)
@@ -22,7 +26,8 @@ func main() {
 
 	corsHandler := cors.AllowAll().Handler(router)
 
-	err := http.ListenAndServe(":443", corsHandler)
+	err = http.ListenAndServe(":443", corsHandler)
+
 	fmt.Println(err)
 }
 
