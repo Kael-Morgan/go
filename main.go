@@ -28,7 +28,7 @@ func main() {
 
 	handler := initHandler()
 
-	err = http.ListenAndServe(":443", handler)
+	err = http.ListenAndServe(":8080", handler)
 	fmt.Println(err)
 }
 
