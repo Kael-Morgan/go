@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"go-beyond/db"
 	handlers "go-beyond/handlers/api"
 	websocket_server "go-beyond/server"
 	"go-beyond/services"
 	"net/http"
+	"os"
 
 	"github.com/joho/godotenv"
 	"github.com/rs/cors"
@@ -16,19 +18,45 @@ func main() {
 
 	err := godotenv.Load(".env")
 
+	if err != nil {
+		os.Exit(1)
+	}
+
 	ctx := context.Background()
-	services.InitializeRedisClient(ctx)
-	websocket_server.InitializeWebSocketServer(ctx)
 
-	router := http.NewServeMux()
+	initServices(ctx)
 
-	addRoutes(router)
+	handler := initHandler()
 
-	corsHandler := cors.AllowAll().Handler(router)
-
-	err = http.ListenAndServe(":443", corsHandler)
-
+	host := os.Getenv("IP") + os.Getenv("PORT")
+	err = http.ListenAndServe(host, handler)
 	fmt.Println(err)
+}
+
+func initServices(ctx context.Context) {
+	services.InitializeRedisClient(ctx)
+	db.InitializeDB(ctx)
+	websocket_server.InitializeWebSocketServer(ctx)
+}
+
+func initHandler() http.Handler {
+	mux := http.NewServeMux()
+	addRoutes(mux)
+
+	return cors.New(cors.Options{
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{
+			http.MethodHead,
+			http.MethodGet,
+			http.MethodPost,
+			http.MethodPut,
+			http.MethodPatch,
+			http.MethodDelete,
+		},
+		AllowedHeaders:   []string{"*"},
+		AllowCredentials: false,
+		MaxAge:           600,
+	}).Handler(mux)
 }
 
 func addRoutes(mux *http.ServeMux) {
@@ -40,27 +68,4 @@ func addRoutes(mux *http.ServeMux) {
 
 	mux.HandleFunc("DELETE /api/v1/cart/{name}", handlers.HandleDeleteCartItem)
 
-	// mux.HandleFunc("/ws/{name}", addCORS(websocket_server.ClientHandler))
-
-	// mux.HandleFunc("POST /api/v1/cart/{name}", addCORS(handlers.HandleUpdateCartItem))
-
-	// mux.HandleFunc("GET /api/v1/cart/{name}", addCORS(handlers.HandleGetCartItems))
-
-	// mux.HandleFunc("DELETE /api/v1/cart/{name}", addCORS(handlers.HandleDeleteCartItem))
-
 }
-
-// func addCORS(next http.HandlerFunc) http.HandlerFunc {
-// 	return func(w http.ResponseWriter, r *http.Request) {
-// 		w.Header().Set("Access-Control-Allow-Origin", "*")
-// 		w.Header().Set("Access-Control-Allow-Headers", "*")
-// 		w.Header().Set("Access-Control-Allow-Credentials", "false")
-// 		w.Header().Set("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE")
-
-// 		if r.Method == "OPTIONS" {
-// 			w.WriteHeader(http.StatusOK)
-// 			return
-// 		}
-// 		next.ServeHTTP(w, r)
-// 	}
-// }

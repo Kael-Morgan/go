@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 
@@ -13,14 +14,14 @@ var (
 )
 
 func InitializeRedisClient(ctx context.Context) {
-	redisClient = redis.NewClient(&redis.Options{
-		Addr:     os.Getenv("REDIS_HOST"),
-		Password: os.Getenv("REDIS_PASSWORD"),
-		DB:       0, // use default DB
-	})
+	redisURI := os.Getenv("REDIS_URL")
+	redisOptions, err := redis.ParseURL(redisURI)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 
-	// Ping the Redis server to check the connection
-	_, err := redisClient.Ping(ctx).Result()
+	redisClient = redis.NewClient(redisOptions)
+	_, err = redisClient.Ping(ctx).Result()
 	if err != nil {
 		log.Fatalf("Could not connect to Redis: %v", err)
 	}
