@@ -28,7 +28,7 @@ func main() {
 
 	handler := initHandler()
 
-	host := os.Getenv("IP") + os.Getenv("PORT")
+	host := os.Getenv("HOST")
 	err = http.ListenAndServe(host, handler)
 	fmt.Println(err)
 }
