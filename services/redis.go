@@ -14,8 +14,8 @@ var (
 )
 
 func InitializeRedisClient(ctx context.Context) {
-	redisURI := os.Getenv("REDIS_URL")
-	redisOptions, err := redis.ParseURL(redisURI)
+	redisURL := os.Getenv("REDIS_URL")
+	redisOptions, err := redis.ParseURL(redisURL)
 	if err != nil {
 		fmt.Println(err.Error())
 	}

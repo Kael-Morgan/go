@@ -28,8 +28,7 @@ func main() {
 
 	handler := initHandler()
 
-	host := os.Getenv("HOST")
-	err = http.ListenAndServe(host, handler)
+	err = http.ListenAndServe(":443", handler)
 	fmt.Println(err)
 }
 
