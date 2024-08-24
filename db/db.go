@@ -20,6 +20,7 @@ func InitializeDB(ctx context.Context) error {
 		return err
 	}
 	db = pool
+	fmt.Println("Connected to Database")
 	return nil
 }
 

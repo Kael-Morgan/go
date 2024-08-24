@@ -25,6 +25,8 @@ func InitializeRedisClient(ctx context.Context) {
 	if err != nil {
 		log.Fatalf("Could not connect to Redis: %v", err)
 	}
+
+	fmt.Println("Connected to Redis")
 }
 
 func GetRedisClient() *redis.Client {
