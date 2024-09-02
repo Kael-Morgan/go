@@ -8,27 +8,16 @@ import (
 	websocket_server "go-beyond/server"
 	"go-beyond/services"
 	"net/http"
-	"os"
-
-	"github.com/joho/godotenv"
-	"github.com/rs/cors"
 )
 
 func main() {
-
-	err := godotenv.Load(".env")
-
-	if err != nil {
-		os.Exit(1)
-	}
-
 	ctx := context.Background()
 
 	initServices(ctx)
 
 	handler := initHandler()
 
-	err = http.ListenAndServe(":8080", handler)
+	err := http.ListenAndServe(":8080", handler)
 	fmt.Println(err)
 }
 
@@ -42,20 +31,21 @@ func initHandler() http.Handler {
 	mux := http.NewServeMux()
 	addRoutes(mux)
 
-	return cors.New(cors.Options{
-		AllowedOrigins: []string{"*"},
-		AllowedMethods: []string{
-			http.MethodHead,
-			http.MethodGet,
-			http.MethodPost,
-			http.MethodPut,
-			http.MethodPatch,
-			http.MethodDelete,
-		},
-		AllowedHeaders:   []string{"*"},
-		AllowCredentials: false,
-		MaxAge:           600,
-	}).Handler(mux)
+	// return cors.New(cors.Options{
+	// 	AllowedOrigins: []string{"*"},
+	// 	AllowedMethods: []string{
+	// 		http.MethodHead,
+	// 		http.MethodGet,
+	// 		http.MethodPost,
+	// 		http.MethodPut,
+	// 		http.MethodPatch,
+	// 		http.MethodDelete,
+	// 	},
+	// 	AllowedHeaders:   []string{"*"},
+	// 	AllowCredentials: false,
+	// 	MaxAge:           600,
+	// }).Handler(mux)
+	return mux
 }
 
 func addRoutes(mux *http.ServeMux) {
